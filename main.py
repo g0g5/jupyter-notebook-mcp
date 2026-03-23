@@ -73,11 +73,13 @@ def _resolve_active_cell(index: int) -> NotebookNode:
     return nb.cells[index]
 
 
-def _format_markdown_preview(source: str, word_limit: int = 10) -> str:
-    words = source.split()
-    if len(words) <= word_limit:
-        return " ".join(words)
-    return f"{' '.join(words[:word_limit])} ..."
+def _format_markdown_preview(source: str, char_limit: int = 240) -> str:
+    normalized = " ".join(source.split())
+    if len(normalized) <= char_limit:
+        return normalized
+
+    truncated = normalized[:char_limit].rstrip()
+    return f"{truncated} ..."
 
 
 def _extract_search_snippets(
@@ -236,26 +238,23 @@ def save_notebook(path: str | None = None) -> dict[str, object]:
 
 
 @mcp.tool
-def read_outline() -> dict[str, object]:
+def read_outline() -> str:
     nb = _require_notebook_loaded()
-    assert session.path is not None
 
-    cells: list[dict[str, object]] = []
+    blocks: list[str] = []
     for index, cell in enumerate(nb.cells):
         if index in session.deleted_indices:
             continue
 
         cell_type = cell.cell_type
         if cell_type == "markdown":
-            preview = _format_markdown_preview(str(cell.source))
-        elif cell_type == "code":
-            preview = "[code cell]"
+            content = _format_markdown_preview(str(cell.source))
         else:
-            preview = "[raw cell]"
+            content = str(cell.source)
 
-        cells.append({"index": index, "type": cell_type, "preview": preview})
+        blocks.append(f"[index:{index} type:{cell_type}]\n\n{content}")
 
-    return {"path": session.path, "cells": cells}
+    return "\n\n".join(blocks)
 
 
 @mcp.tool

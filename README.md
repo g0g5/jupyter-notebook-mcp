@@ -9,7 +9,7 @@ The server keeps one notebook open at a time and provides stable cell indices du
 - Single active notebook session with in-memory state (`path`, notebook object, deleted indices, dirty flag)
 - Autosave current notebook before loading a different notebook
 - Soft-delete cells while keeping original indices stable until the next `load_notebook`
-- Read outline previews for markdown/code/raw cells
+- Read outline as plain-text blocks for LLM context
 - Case-insensitive keyword search with contextual snippets
 - Actionable `ToolError` messages for common failure cases
 
@@ -24,7 +24,8 @@ The server exposes the following MCP tools:
   - Saves current notebook (optionally to a new path)
   - Filters out soft-deleted cells before writing
 - `read_outline()`
-  - Returns active cells with index/type/preview
+  - Returns active cells as plain-text blocks: `[index:N type:...]` + content
+  - Markdown cells are preview-truncated; code/raw cells include full source
 - `read_cell(index: int)`
   - Returns full source for one active cell
 - `add_cell(content: str, cell_type: str = "code")`

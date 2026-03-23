@@ -54,15 +54,13 @@ def test_end_to_end_flow_and_reload_behavior(tmp_path: Path) -> None:
     assert loaded["active_cells"] == 3
     assert loaded["deleted_indices"] == []
 
-    outline = cast(dict[str, Any], main.read_outline())
-    assert set(outline) == {"path", "cells"}
-    assert outline["cells"][0]["index"] == 0
-    assert (
-        outline["cells"][0]["preview"]
-        == "one two three four five six seven eight nine ten ..."
-    )
-    assert outline["cells"][1]["preview"] == "[code cell]"
-    assert outline["cells"][2]["preview"] == "[raw cell]"
+    outline = cast(str, main.read_outline())
+    assert "[index:0 type:markdown]" in outline
+    assert "one two three four five six seven eight nine ten eleven" in outline
+    assert "[index:1 type:code]" in outline
+    assert "print('hello world')\nvalue = 10" in outline
+    assert "[index:2 type:raw]" in outline
+    assert "raw payload" in outline
 
     search = cast(dict[str, Any], main.search_cell("hello"))
     assert set(search) == {"keywords", "results"}
@@ -205,13 +203,16 @@ def test_search_cell_requires_all_keywords_and_skips_deleted_cells(
 
 
 def test_markdown_preview_handles_short_and_long_content() -> None:
-    short_preview = main._format_markdown_preview("one   two")
+    short_preview = main._format_markdown_preview("one   two", char_limit=20)
     long_preview = main._format_markdown_preview(
-        "one two three four five six seven eight nine ten eleven"
+        "one two three four five six seven eight nine ten eleven",
+        char_limit=20,
     )
 
     assert short_preview == "one two"
-    assert long_preview == "one two three four five six seven eight nine ten ..."
+    assert long_preview.endswith(" ...")
+    assert long_preview.startswith("one two three four")
+    assert len(long_preview) <= 24
 
 
 def test_extract_search_snippets_handles_overlap_and_empty_inputs() -> None:
