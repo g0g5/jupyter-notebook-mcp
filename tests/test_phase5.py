@@ -67,10 +67,16 @@ class Phase5ContractTests(unittest.TestCase):
             self.assertEqual(search["results"][0]["index"], 1)
             self.assertTrue(search["results"][0]["snippets"])
 
-            edited = main.edit_cell(1, "print('hello edited')")
-            self.assertEqual(set(edited), {"index", "updated", "chars"})
-            self.assertEqual(edited["index"], 1)
-            self.assertTrue(edited["updated"])
+            replaced = main.replace_cell(1, "print('hello edited')")
+            self.assertEqual(set(replaced), {"index", "updated", "chars"})
+            self.assertEqual(replaced["index"], 1)
+            self.assertTrue(replaced["updated"])
+
+            added = main.add_cell("extra details", cell_type="markdown")
+            self.assertEqual(set(added), {"index", "type", "added", "chars"})
+            self.assertEqual(added["index"], 3)
+            self.assertEqual(added["type"], "markdown")
+            self.assertTrue(added["added"])
 
             deleted = main.delete_cell(0)
             self.assertEqual(set(deleted), {"index", "deleted"})
@@ -81,12 +87,14 @@ class Phase5ContractTests(unittest.TestCase):
                 main.read_cell(0)
             self.assertIn("has been deleted", str(err.exception))
 
-            save_result = main.save_notebook()
+            saved_copy_path = Path(tmp_dir) / "flow_copy.ipynb"
+            save_result = main.save_notebook(str(saved_copy_path))
             self.assertEqual(set(save_result), {"path", "saved", "active_cells"})
-            self.assertEqual(save_result["active_cells"], 2)
+            self.assertEqual(save_result["path"], str(saved_copy_path))
+            self.assertEqual(save_result["active_cells"], 3)
 
-            reloaded = main.load_notebook(str(notebook_path))
-            self.assertEqual(reloaded["total_cells"], 2)
+            reloaded = main.load_notebook(str(saved_copy_path))
+            self.assertEqual(reloaded["total_cells"], 3)
 
     def test_standardized_errors_for_contract_failures(self) -> None:
         with self.assertRaises(ToolError) as err:

@@ -42,6 +42,12 @@ def _already_deleted_error(index: int) -> ToolError:
     return ToolError(f"Cell index {index} is already deleted.")
 
 
+def _invalid_cell_type_error(cell_type: str) -> ToolError:
+    return ToolError(
+        f"Unsupported cell type '{cell_type}'. Use one of: code, markdown, raw."
+    )
+
+
 def _require_notebook_loaded() -> NotebookNode:
     if session.nb is None or session.path is None:
         raise _not_loaded_error()
@@ -153,9 +159,23 @@ def _materialize_active_notebook(nb: NotebookNode) -> NotebookNode:
     return materialized
 
 
-def _save_open_notebook(*, autosave: bool) -> dict[str, object]:
+def _new_cell(cell_type: str, content: str) -> NotebookNode:
+    normalized_type = cell_type.strip().lower()
+    if normalized_type == "code":
+        return nbformat.v4.new_code_cell(content)
+    if normalized_type == "markdown":
+        return nbformat.v4.new_markdown_cell(content)
+    if normalized_type == "raw":
+        return nbformat.v4.new_raw_cell(content)
+    raise _invalid_cell_type_error(cell_type)
+
+
+def _save_open_notebook(
+    *, autosave: bool, path: str | None = None
+) -> dict[str, object]:
     nb = _require_notebook_loaded()
     assert session.path is not None
+    target_path = path if path is not None else session.path
 
     try:
         materialized = _materialize_active_notebook(nb)
@@ -165,14 +185,15 @@ def _save_open_notebook(*, autosave: bool) -> dict[str, object]:
         raise ToolError(f"{operation} failed: notebook is invalid: {exc}") from exc
 
     try:
-        nbformat.write(materialized, session.path)
+        nbformat.write(materialized, target_path)
     except Exception as exc:
         operation = "Autosave" if autosave else "Save"
-        raise ToolError(f"{operation} failed for '{session.path}': {exc}") from exc
+        raise ToolError(f"{operation} failed for '{target_path}': {exc}") from exc
 
+    session.path = target_path
     session.dirty = False
     return {
-        "path": session.path,
+        "path": target_path,
         "saved": True,
         "active_cells": len(materialized.cells),
     }
@@ -210,8 +231,8 @@ def load_notebook(path: str) -> dict[str, object]:
 
 
 @mcp.tool
-def save_notebook() -> dict[str, object]:
-    return _save_open_notebook(autosave=False)
+def save_notebook(path: str | None = None) -> dict[str, object]:
+    return _save_open_notebook(autosave=False, path=path)
 
 
 @mcp.tool
@@ -244,7 +265,22 @@ def read_cell(index: int) -> dict[str, object]:
 
 
 @mcp.tool
-def edit_cell(index: int, content: str) -> dict[str, object]:
+def add_cell(content: str, cell_type: str = "code") -> dict[str, object]:
+    nb = _require_notebook_loaded()
+    cell = _new_cell(cell_type, content)
+    nb.cells.append(cell)
+    index = len(nb.cells) - 1
+    session.dirty = True
+    return {
+        "index": index,
+        "type": cell.cell_type,
+        "added": True,
+        "chars": len(content),
+    }
+
+
+@mcp.tool
+def replace_cell(index: int, content: str) -> dict[str, object]:
     cell = _resolve_active_cell(index)
     cell.source = content
     session.dirty = True
