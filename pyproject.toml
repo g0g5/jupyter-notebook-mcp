@@ -10,5 +10,10 @@ dependencies = [
     "pydantic>=2.12.5",
 ]
 
+[dependency-groups]
+dev = [
+    "pytest>=8.4.0",
+]
+
 [project.scripts]
 jupyter-notebook-mcp = "main:main"
