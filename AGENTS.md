@@ -9,6 +9,6 @@ jupyter-notebook-mcp/
 ## Development Guide
 - Install/update dependencies: `uv sync`
 - Run the server locally: `uv run python main.py`
-- Run tests: `uv run python -m unittest discover -s tests -p "test_*.py" -v`
+- Run tests: `uv run pytest -v`
 - Typecheck (lightweight, no dedicated type checker configured): `uv run python -m py_compile main.py tests/test_phase5.py`
 - Verify changes before handoff: run the typecheck command, then run the test command
