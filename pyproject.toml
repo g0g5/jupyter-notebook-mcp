@@ -16,4 +16,4 @@ dev = [
 ]
 
 [project.scripts]
-jupyter-notebook-mcp = "main:main"
+jupyter-notebook-mcp = "jupyter_notebook_mcp:main"
