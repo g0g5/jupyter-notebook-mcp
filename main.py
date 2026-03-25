@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-import copy
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
+from pathlib import Path
 
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
@@ -17,13 +17,13 @@ mcp = FastMCP("jupyter-notebook-mcp", strict_input_validation=True)
 class SessionState:
     path: str | None = None
     nb: NotebookNode | None = None
-    deleted_indices: set[int] = field(default_factory=set)
     dirty: bool = False
 
 
 session = SessionState()
 
 WORD_RE = re.compile(r"\S+")
+CELL_HEADER_RE = re.compile(r"^\[index:(\d+) type:(code|markdown|raw)\]$")
 
 
 def _not_loaded_error() -> ToolError:
@@ -32,14 +32,6 @@ def _not_loaded_error() -> ToolError:
 
 def _out_of_range_error(index: int) -> ToolError:
     return ToolError(f"Cell index {index} is out of range.")
-
-
-def _deleted_index_error(index: int) -> ToolError:
-    return ToolError(f"Cell index {index} has been deleted.")
-
-
-def _already_deleted_error(index: int) -> ToolError:
-    return ToolError(f"Cell index {index} is already deleted.")
 
 
 def _invalid_cell_type_error(cell_type: str) -> ToolError:
@@ -59,16 +51,10 @@ def _ensure_index_in_range(index: int, nb: NotebookNode) -> None:
         raise _out_of_range_error(index)
 
 
-def _ensure_cell_not_deleted(index: int) -> None:
-    if index in session.deleted_indices:
-        raise _deleted_index_error(index)
-
-
 def _resolve_active_cell(index: int) -> NotebookNode:
     nb = _require_notebook_loaded()
 
     _ensure_index_in_range(index, nb)
-    _ensure_cell_not_deleted(index)
 
     return nb.cells[index]
 
@@ -151,16 +137,6 @@ def _extract_search_snippets(
     return snippets
 
 
-def _materialize_active_notebook(nb: NotebookNode) -> NotebookNode:
-    materialized = copy.deepcopy(nb)
-    materialized.cells = [
-        cell
-        for idx, cell in enumerate(materialized.cells)
-        if idx not in session.deleted_indices
-    ]
-    return materialized
-
-
 def _new_cell(cell_type: str, content: str) -> NotebookNode:
     normalized_type = cell_type.strip().lower()
     if normalized_type == "code":
@@ -172,6 +148,80 @@ def _new_cell(cell_type: str, content: str) -> NotebookNode:
     raise _invalid_cell_type_error(cell_type)
 
 
+def _format_cell_block(
+    index: int,
+    cell_type: str,
+    source: str,
+) -> str:
+    return f"[index:{index} type:{cell_type}]\n\n{source}"
+
+
+def _render_cell_block(
+    index: int,
+    cell: NotebookNode,
+    *,
+    markdown_preview: bool,
+) -> str:
+    source = str(cell.source)
+    if markdown_preview and cell.cell_type == "markdown":
+        source = _format_markdown_preview(source)
+    return _format_cell_block(index=index, cell_type=cell.cell_type, source=source)
+
+
+def _parse_markdown_document(content: str) -> list[NotebookNode]:
+    lines = content.splitlines()
+    header_positions = [
+        line_index
+        for line_index, line in enumerate(lines)
+        if CELL_HEADER_RE.match(line)
+    ]
+
+    if not header_positions:
+        if content.strip() == "":
+            return []
+        raise ToolError("Invalid markdown notebook format: no cell headers found.")
+
+    if any(line.strip() for line in lines[: header_positions[0]]):
+        raise ToolError(
+            "Invalid markdown notebook format: unexpected content before first cell header."
+        )
+
+    parsed_cells: list[NotebookNode] = []
+    for block_idx, block_start in enumerate(header_positions):
+        header_match = CELL_HEADER_RE.match(lines[block_start])
+        assert header_match is not None
+
+        declared_index = int(header_match.group(1))
+        expected_index = block_idx
+        if declared_index != expected_index:
+            raise ToolError(
+                "Invalid markdown notebook format: "
+                f"expected index {expected_index}, got {declared_index}."
+            )
+
+        block_end = (
+            header_positions[block_idx + 1]
+            if block_idx + 1 < len(header_positions)
+            else len(lines)
+        )
+        source_end = block_end
+        if (
+            block_idx + 1 < len(header_positions)
+            and source_end > block_start
+            and lines[source_end - 1] == ""
+        ):
+            source_end -= 1
+
+        source_start = block_start + 1
+        if source_start < source_end and lines[source_start] == "":
+            source_start += 1
+
+        source = "\n".join(lines[source_start:source_end])
+        parsed_cells.append(_new_cell(header_match.group(2), source))
+
+    return parsed_cells
+
+
 def _save_open_notebook(
     *, autosave: bool, path: str | None = None
 ) -> dict[str, object]:
@@ -180,14 +230,13 @@ def _save_open_notebook(
     target_path = path if path is not None else session.path
 
     try:
-        materialized = _materialize_active_notebook(nb)
-        nbformat.validate(materialized)
+        nbformat.validate(nb)
     except Exception as exc:
         operation = "Autosave" if autosave else "Save"
         raise ToolError(f"{operation} failed: notebook is invalid: {exc}") from exc
 
     try:
-        nbformat.write(materialized, target_path)
+        nbformat.write(nb, target_path)
     except Exception as exc:
         operation = "Autosave" if autosave else "Save"
         raise ToolError(f"{operation} failed for '{target_path}': {exc}") from exc
@@ -197,7 +246,7 @@ def _save_open_notebook(
     return {
         "path": target_path,
         "saved": True,
-        "active_cells": len(materialized.cells),
+        "active_cells": len(nb.cells),
     }
 
 
@@ -220,7 +269,6 @@ def load_notebook(path: str) -> dict[str, object]:
 
     session.path = path
     session.nb = loaded_nb
-    session.deleted_indices.clear()
     session.dirty = False
 
     total_cells = len(loaded_nb.cells)
@@ -228,7 +276,6 @@ def load_notebook(path: str) -> dict[str, object]:
         "path": path,
         "total_cells": total_cells,
         "active_cells": total_cells,
-        "deleted_indices": [],
     }
 
 
@@ -243,16 +290,7 @@ def read_outline() -> str:
 
     blocks: list[str] = []
     for index, cell in enumerate(nb.cells):
-        if index in session.deleted_indices:
-            continue
-
-        cell_type = cell.cell_type
-        if cell_type == "markdown":
-            content = _format_markdown_preview(str(cell.source))
-        else:
-            content = str(cell.source)
-
-        blocks.append(f"[index:{index} type:{cell_type}]\n\n{content}")
+        blocks.append(_render_cell_block(index, cell, markdown_preview=True))
 
     return "\n\n".join(blocks)
 
@@ -264,18 +302,36 @@ def read_cell(index: int) -> dict[str, object]:
 
 
 @mcp.tool
-def add_cell(content: str, cell_type: str = "code") -> dict[str, object]:
+def add_cell(content: str, cell_type: str = "code", index: int | None = None) -> str:
     nb = _require_notebook_loaded()
     cell = _new_cell(cell_type, content)
-    nb.cells.append(cell)
-    index = len(nb.cells) - 1
+
+    if index is None:
+        insert_index = len(nb.cells)
+    else:
+        _ensure_index_in_range(index, nb)
+        insert_index = index + 1
+
+    nb.cells.insert(insert_index, cell)
     session.dirty = True
-    return {
-        "index": index,
-        "type": cell.cell_type,
-        "added": True,
-        "chars": len(content),
-    }
+
+    blocks = [
+        _render_cell_block(insert_index, nb.cells[insert_index], markdown_preview=False)
+    ]
+    if insert_index - 1 >= 0:
+        blocks.append(
+            _render_cell_block(
+                insert_index - 1, nb.cells[insert_index - 1], markdown_preview=False
+            )
+        )
+    if insert_index + 1 < len(nb.cells):
+        blocks.append(
+            _render_cell_block(
+                insert_index + 1, nb.cells[insert_index + 1], markdown_preview=False
+            )
+        )
+
+    return "\n\n".join(blocks)
 
 
 @mcp.tool
@@ -287,16 +343,56 @@ def replace_cell(index: int, content: str) -> dict[str, object]:
 
 
 @mcp.tool
-def delete_cell(index: int) -> dict[str, object]:
+def remove_cell(index: int) -> str:
     nb = _require_notebook_loaded()
 
     _ensure_index_in_range(index, nb)
-    if index in session.deleted_indices:
-        raise _already_deleted_error(index)
+    blocks = [_render_cell_block(index, nb.cells[index], markdown_preview=False)]
+    if index - 1 >= 0:
+        blocks.append(
+            _render_cell_block(index - 1, nb.cells[index - 1], markdown_preview=False)
+        )
+    if index + 1 < len(nb.cells):
+        blocks.append(
+            _render_cell_block(index + 1, nb.cells[index + 1], markdown_preview=False)
+        )
 
-    session.deleted_indices.add(index)
+    nb.cells.pop(index)
     session.dirty = True
-    return {"index": index, "deleted": True}
+
+    return "\n\n".join(blocks)
+
+
+@mcp.tool
+def delete_cell(index: int) -> str:
+    return remove_cell(index)
+
+
+@mcp.tool
+def to_markdown() -> str:
+    nb = _require_notebook_loaded()
+    blocks = [
+        _render_cell_block(index, cell, markdown_preview=False)
+        for index, cell in enumerate(nb.cells)
+    ]
+    return "\n\n".join(blocks)
+
+
+@mcp.tool
+def from_markdown(path: str) -> dict[str, object]:
+    nb = _require_notebook_loaded()
+
+    try:
+        markdown_content = Path(path).read_text(encoding="utf-8")
+    except FileNotFoundError as exc:
+        raise ToolError(f"Markdown file not found: '{path}'.") from exc
+    except Exception as exc:
+        raise ToolError(f"Failed to read markdown file '{path}': {exc}") from exc
+
+    parsed_cells = _parse_markdown_document(markdown_content)
+    nb.cells = parsed_cells
+    session.dirty = True
+    return {"path": path, "replaced": True, "cells": len(parsed_cells)}
 
 
 @mcp.tool
@@ -311,9 +407,6 @@ def search_cell(keywords: str) -> dict[str, object]:
 
     results: list[dict[str, object]] = []
     for index, cell in enumerate(nb.cells):
-        if index in session.deleted_indices:
-            continue
-
         source = str(cell.source)
         lowered_source = source.lower()
         if not all(keyword in lowered_source for keyword in lowered_keywords):

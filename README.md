@@ -2,14 +2,15 @@
 
 A FastMCP server for loading, reading, editing, searching, and saving Jupyter notebooks (`.ipynb`) through MCP tools.
 
-The server keeps one notebook open at a time and provides stable cell indices during a session, even after deletions.
+The server keeps one notebook open at a time and uses live cell indices that update as cells are inserted or removed.
 
 ## Features
 
-- Single active notebook session with in-memory state (`path`, notebook object, deleted indices, dirty flag)
+- Single active notebook session with in-memory state (`path`, notebook object, dirty flag)
 - Autosave current notebook before loading a different notebook
-- Soft-delete cells while keeping original indices stable until the next `load_notebook`
+- Real insert/remove semantics: indices shift immediately after edits
 - Read outline as plain-text blocks for LLM context
+- Export/import full notebook content in markdown block format
 - Case-insensitive keyword search with contextual snippets
 - Actionable `ToolError` messages for common failure cases
 
@@ -22,18 +23,26 @@ The server exposes the following MCP tools:
   - Autosaves the currently open notebook first (if any)
 - `save_notebook(path: str | None = None)`
   - Saves current notebook (optionally to a new path)
-  - Filters out soft-deleted cells before writing
 - `read_outline()`
   - Returns active cells as plain-text blocks: `[index:N type:...]` + content
   - Markdown cells are preview-truncated; code/raw cells include full source
 - `read_cell(index: int)`
   - Returns full source for one active cell
-- `add_cell(content: str, cell_type: str = "code")`
-  - Appends a new cell (`code`, `markdown`, or `raw`)
+- `add_cell(content: str, cell_type: str = "code", index: int | None = None)`
+  - Appends a new cell when `index` is omitted
+  - Inserts below the referenced cell when `index` is provided (insert at `index + 1`)
+  - Returns plain-text blocks for changed cell + adjacent cells
 - `replace_cell(index: int, content: str)`
   - Replaces entire cell source
+- `remove_cell(index: int)`
+  - Removes a cell by index with immediate reindexing
+  - Returns plain-text blocks for changed cell + adjacent cells
 - `delete_cell(index: int)`
-  - Soft-deletes a cell by index
+  - Backward-compatible alias of `remove_cell`
+- `to_markdown()`
+  - Exports all cells as plain-text blocks with full content
+- `from_markdown(path: str)`
+  - Reads exported markdown blocks from disk and replaces current notebook cells
 - `search_cell(keywords: str)`
   - Space-separated keyword search (all keywords must match)
 
@@ -136,5 +145,5 @@ jupyter-notebook-mcp/
 
 - If no notebook is loaded, notebook-dependent tools return:
   - `No notebook is loaded. Use load_notebook(path) first.`
-- Deleted cells are hidden from outline/read/search, but index numbers remain stable in the current session.
+- Cell indices are always current active indices; insert/remove operations reindex following cells.
 - On save, the server validates notebook structure with `nbformat.validate` before writing.
