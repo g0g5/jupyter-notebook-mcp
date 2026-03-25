@@ -123,7 +123,7 @@ uv sync
 Typecheck (lightweight compile check):
 
 ```bash
-uv run python -m py_compile main.py tests/test_phase5.py
+uv run python -m py_compile main.py jupyter_notebook_mcp/*.py tests/*.py
 ```
 
 Run tests:
@@ -136,9 +136,23 @@ uv run pytest -v
 
 ```text
 jupyter-notebook-mcp/
-|- main.py                  # FastMCP server and tool implementations
+|- main.py                         # Compatibility entrypoint and re-exports
+|- jupyter_notebook_mcp/
+|  |- server.py                    # FastMCP app and tool registration
+|  |- session.py                   # Shared in-memory notebook session state
+|  |- notebook_io.py               # Notebook load/save and validation
+|  |- cell_ops.py                  # Cell read/edit operations
+|  |- markdown_codec.py            # Markdown export/import parsing
+|  |- search.py                    # Keyword search and snippet extraction
+|  \- formatting.py                # Cell block and markdown preview formatting
 \- tests/
-   \- test_phase5.py        # Contract and error handling tests
+   |- conftest.py                  # Shared fixtures (session reset)
+   |- helpers.py                   # Shared notebook test helpers
+   |- test_contract_flow.py
+   |- test_session_and_io.py
+   |- test_cell_editing.py
+   |- test_markdown_codec.py
+   \- test_search_and_formatting.py
 ```
 
 ## Behavior Notes
