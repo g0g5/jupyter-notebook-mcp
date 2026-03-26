@@ -68,13 +68,21 @@ def _parse_markdown_document(content: str) -> list[NotebookNode]:
     return parsed_cells
 
 
-def to_markdown_text() -> str:
+def read_notebook_text() -> str:
     nb = _require_notebook_loaded()
-    blocks = [
-        _render_cell_block(index, cell, markdown_preview=False)
-        for index, cell in enumerate(nb.cells)
-    ]
+    blocks = [_render_cell_block(index, cell) for index, cell in enumerate(nb.cells)]
     return "\n\n".join(blocks)
+
+
+def save_markdown_file(path: str) -> dict[str, object]:
+    nb = _require_notebook_loaded()
+
+    try:
+        Path(path).write_text(read_notebook_text(), encoding="utf-8")
+    except Exception as exc:
+        raise ToolError(f"Failed to save markdown file '{path}': {exc}") from exc
+
+    return {"path": path, "saved": True, "cells": len(nb.cells)}
 
 
 def from_markdown_file(path: str) -> dict[str, object]:

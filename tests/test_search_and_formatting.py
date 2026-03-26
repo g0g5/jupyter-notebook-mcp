@@ -5,7 +5,6 @@ from typing import Any, cast
 
 import main
 
-from jupyter_notebook_mcp.formatting import _format_markdown_preview
 from jupyter_notebook_mcp.search import _extract_search_snippets
 
 from tests.helpers import write_notebook
@@ -32,19 +31,6 @@ def test_search_cell_requires_all_keywords_and_respects_real_removal(
 
     main.remove_cell(1)
     assert main.search_cell("hello value")["results"] == []
-
-
-def test_markdown_preview_handles_short_and_long_content() -> None:
-    short_preview = _format_markdown_preview("one   two", char_limit=20)
-    long_preview = _format_markdown_preview(
-        "one two three four five six seven eight nine ten eleven",
-        char_limit=20,
-    )
-
-    assert short_preview == "one two"
-    assert long_preview.endswith(" ...")
-    assert long_preview.startswith("one two three four")
-    assert len(long_preview) <= 24
 
 
 def test_extract_search_snippets_handles_overlap_and_empty_inputs() -> None:

@@ -3,11 +3,10 @@ from fastmcp import FastMCP
 from .cell_ops import (
     add_cell_impl,
     read_cell_impl,
-    read_outline_impl,
     remove_cell_impl,
     replace_cell_impl,
 )
-from .markdown_codec import from_markdown_file, to_markdown_text
+from .markdown_codec import from_markdown_file, read_notebook_text, save_markdown_file
 from .notebook_io import load_notebook_impl, save_notebook_impl
 from .search import search_cells
 
@@ -26,8 +25,8 @@ def save_notebook(path: str | None = None) -> dict[str, object]:
 
 
 @mcp.tool
-def read_outline() -> str:
-    return read_outline_impl()
+def read_notebook() -> str:
+    return read_notebook_text()
 
 
 @mcp.tool
@@ -56,8 +55,8 @@ def delete_cell(index: int) -> str:
 
 
 @mcp.tool
-def to_markdown() -> str:
-    return to_markdown_text()
+def save_markdown(path: str) -> dict[str, object]:
+    return save_markdown_file(path)
 
 
 @mcp.tool

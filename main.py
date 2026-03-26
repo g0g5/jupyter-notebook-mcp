@@ -5,7 +5,6 @@ from jupyter_notebook_mcp.errors import (
 )
 from jupyter_notebook_mcp.formatting import (
     _format_cell_block,
-    _format_markdown_preview,
     _render_cell_block,
 )
 from jupyter_notebook_mcp.markdown_codec import CELL_HEADER_RE, _parse_markdown_document
@@ -19,12 +18,12 @@ from jupyter_notebook_mcp.server import (
     main,
     mcp,
     read_cell,
-    read_outline,
+    read_notebook,
     remove_cell,
     replace_cell,
+    save_markdown,
     save_notebook,
     search_cell,
-    to_markdown,
 )
 from jupyter_notebook_mcp.session import (
     SessionState,

@@ -9,8 +9,8 @@ The server keeps one notebook open at a time and uses live cell indices that upd
 - Single active notebook session with in-memory state (`path`, notebook object, dirty flag)
 - Autosave current notebook before loading a different notebook
 - Real insert/remove semantics: indices shift immediately after edits
-- Read outline as plain-text blocks for LLM context
-- Export/import full notebook content in markdown block format
+- Read full notebook as plain-text blocks
+- Save/import notebook content in markdown block format
 - Case-insensitive keyword search with contextual snippets
 - Actionable `ToolError` messages for common failure cases
 
@@ -23,9 +23,8 @@ The server exposes the following MCP tools:
   - Autosaves the currently open notebook first (if any)
 - `save_notebook(path: str | None = None)`
   - Saves current notebook (optionally to a new path)
-- `read_outline()`
-  - Returns active cells as plain-text blocks: `[index:N type:...]` + content
-  - Markdown cells are preview-truncated; code/raw cells include full source
+- `read_notebook()`
+  - Returns active cells as plain-text blocks: `[index:N type:...]` + full content
 - `read_cell(index: int)`
   - Returns full source for one active cell
 - `add_cell(content: str, cell_type: str = "code", index: int | None = None)`
@@ -39,8 +38,8 @@ The server exposes the following MCP tools:
   - Returns plain-text blocks for changed cell + adjacent cells
 - `delete_cell(index: int)`
   - Backward-compatible alias of `remove_cell`
-- `to_markdown()`
-  - Exports all cells as plain-text blocks with full content
+- `save_markdown(path: str)`
+  - Saves the same text returned by `read_notebook()` to a markdown file path
 - `from_markdown(path: str)`
   - Reads exported markdown blocks from disk and replaces current notebook cells
 - `search_cell(keywords: str)`

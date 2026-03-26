@@ -17,13 +17,13 @@ def test_end_to_end_flow_and_reload_behavior(tmp_path: Path) -> None:
     assert loaded["total_cells"] == 3
     assert loaded["active_cells"] == 3
 
-    outline = cast(str, main.read_outline())
-    assert "[index:0 type:markdown]" in outline
-    assert "one two three four five six seven eight nine ten eleven" in outline
-    assert "[index:1 type:code]" in outline
-    assert "print('hello world')\nvalue = 10" in outline
-    assert "[index:2 type:raw]" in outline
-    assert "raw payload" in outline
+    notebook_text = cast(str, main.read_notebook())
+    assert "[index:0 type:markdown]" in notebook_text
+    assert "one two three four five six seven eight nine ten eleven" in notebook_text
+    assert "[index:1 type:code]" in notebook_text
+    assert "print('hello world')\nvalue = 10" in notebook_text
+    assert "[index:2 type:raw]" in notebook_text
+    assert "raw payload" in notebook_text
 
     search = cast(dict[str, Any], main.search_cell("hello"))
     assert set(search) == {"keywords", "results"}

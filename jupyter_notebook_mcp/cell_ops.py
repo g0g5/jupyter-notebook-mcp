@@ -10,16 +10,6 @@ from .session import (
 )
 
 
-def read_outline_impl() -> str:
-    nb = _require_notebook_loaded()
-
-    blocks: list[str] = []
-    for index, cell in enumerate(nb.cells):
-        blocks.append(_render_cell_block(index, cell, markdown_preview=True))
-
-    return "\n\n".join(blocks)
-
-
 def read_cell_impl(index: int) -> dict[str, object]:
     cell = _resolve_active_cell(index)
     return {"index": index, "type": cell.cell_type, "source": str(cell.source)}
@@ -40,21 +30,11 @@ def add_cell_impl(
     nb.cells.insert(insert_index, cell)
     session.dirty = True
 
-    blocks = [
-        _render_cell_block(insert_index, nb.cells[insert_index], markdown_preview=False)
-    ]
+    blocks = [_render_cell_block(insert_index, nb.cells[insert_index])]
     if insert_index - 1 >= 0:
-        blocks.append(
-            _render_cell_block(
-                insert_index - 1, nb.cells[insert_index - 1], markdown_preview=False
-            )
-        )
+        blocks.append(_render_cell_block(insert_index - 1, nb.cells[insert_index - 1]))
     if insert_index + 1 < len(nb.cells):
-        blocks.append(
-            _render_cell_block(
-                insert_index + 1, nb.cells[insert_index + 1], markdown_preview=False
-            )
-        )
+        blocks.append(_render_cell_block(insert_index + 1, nb.cells[insert_index + 1]))
 
     return "\n\n".join(blocks)
 
@@ -70,15 +50,11 @@ def remove_cell_impl(index: int) -> str:
     nb = _require_notebook_loaded()
 
     _ensure_index_in_range(index, nb)
-    blocks = [_render_cell_block(index, nb.cells[index], markdown_preview=False)]
+    blocks = [_render_cell_block(index, nb.cells[index])]
     if index - 1 >= 0:
-        blocks.append(
-            _render_cell_block(index - 1, nb.cells[index - 1], markdown_preview=False)
-        )
+        blocks.append(_render_cell_block(index - 1, nb.cells[index - 1]))
     if index + 1 < len(nb.cells):
-        blocks.append(
-            _render_cell_block(index + 1, nb.cells[index + 1], markdown_preview=False)
-        )
+        blocks.append(_render_cell_block(index + 1, nb.cells[index + 1]))
 
     nb.cells.pop(index)
     session.dirty = True
