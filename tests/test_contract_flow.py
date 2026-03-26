@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, cast
 
-import main
+import jupyter_notebook_mcp as main
 
 from tests.helpers import parse_cell_blocks, write_notebook
 

@@ -6,7 +6,7 @@ from typing import Any, cast
 from fastmcp.exceptions import ToolError
 import pytest
 
-import main
+import jupyter_notebook_mcp as main
 from jupyter_notebook_mcp.notebook_io import _new_cell
 
 from tests.helpers import parse_cell_blocks, write_notebook

@@ -68,7 +68,7 @@ uv tool install jupyter-notebook-mcp --from git+https://github.com/g0g5/jupyter-
 
 ```bash
 uv sync
-uv run python main.py
+uv run python -m jupyter_notebook_mcp
 ```
 
 You can also run via the project script entrypoint:
@@ -122,7 +122,7 @@ uv sync
 Typecheck (lightweight compile check):
 
 ```bash
-uv run python -m py_compile main.py jupyter_notebook_mcp/*.py tests/*.py
+uv run python -m py_compile jupyter_notebook_mcp/*.py tests/*.py
 ```
 
 Run tests:
@@ -135,8 +135,8 @@ uv run pytest -v
 
 ```text
 jupyter-notebook-mcp/
-|- main.py                         # Compatibility entrypoint and re-exports
 |- jupyter_notebook_mcp/
+|  |- __main__.py                  # Module entrypoint for `python -m jupyter_notebook_mcp`
 |  |- server.py                    # FastMCP app and tool registration
 |  |- session.py                   # Shared in-memory notebook session state
 |  |- notebook_io.py               # Notebook load/save and validation

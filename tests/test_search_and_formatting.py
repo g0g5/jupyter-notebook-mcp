@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, cast
 
-import main
+import jupyter_notebook_mcp as main
 
 from jupyter_notebook_mcp.search import _extract_search_snippets
 

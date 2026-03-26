@@ -8,7 +8,7 @@ from fastmcp.exceptions import ToolError
 import nbformat
 import pytest
 
-import main
+import jupyter_notebook_mcp as main
 
 from tests.helpers import write_notebook
 
