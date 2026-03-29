@@ -1,6 +1,6 @@
 # jupyter-notebook-mcp
 
-A FastMCP server for loading, reading, editing, searching, and saving Jupyter notebooks (`.ipynb`) through MCP tools.
+A FastMCP server for loading, editing, searching, and saving Jupyter notebooks (`.ipynb`) through MCP tools.
 
 The server keeps one notebook open at a time and uses live cell indices that update as cells are inserted or removed.
 
@@ -9,7 +9,7 @@ The server keeps one notebook open at a time and uses live cell indices that upd
 - Single active notebook session with in-memory state (`path`, notebook object, dirty flag)
 - Autosave current notebook before loading a different notebook
 - Real insert/remove semantics: indices shift immediately after edits
-- Read full notebook as plain-text blocks
+- Return full notebook as plain-text blocks when loading
 - Save/import notebook content in markdown block format
 - Case-insensitive keyword search with contextual snippets
 - Actionable `ToolError` messages for common failure cases
@@ -21,10 +21,9 @@ The server exposes the following MCP tools:
 - `load_notebook(path: str)`
   - Loads and validates a notebook
   - Autosaves the currently open notebook first (if any)
+  - Returns active cells as plain-text blocks: `[index:N type:...]` + full content
 - `save_notebook(path: str | None = None)`
   - Saves current notebook (optionally to a new path)
-- `read_notebook()`
-  - Returns active cells as plain-text blocks: `[index:N type:...]` + full content
 - `read_cell(index: int)`
   - Returns full source for one active cell
 - `add_cell(content: str, cell_type: str = "code", index: int | None = None)`
@@ -39,7 +38,7 @@ The server exposes the following MCP tools:
 - `delete_cell(index: int)`
   - Backward-compatible alias of `remove_cell`
 - `save_markdown(path: str)`
-  - Saves the same text returned by `read_notebook()` to a markdown file path
+  - Saves the same text returned by `load_notebook()` to a markdown file path
 - `from_markdown(path: str)`
   - Reads exported markdown blocks from disk and replaces current notebook cells
 - `search_cell(keywords: str)`

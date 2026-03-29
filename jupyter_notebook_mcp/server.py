@@ -15,24 +15,19 @@ mcp = FastMCP("jupyter-notebook-mcp", strict_input_validation=True)
 
 
 @mcp.tool
-def load_notebook(path: str) -> dict[str, object]:
-    """Load and validate a notebook from disk.
+def load_notebook(path: str) -> str:
+    """Load and validate a notebook from disk, then return markdown blocks.
 
     Autosaves the currently open notebook before switching.
     """
-    return load_notebook_impl(path)
+    load_notebook_impl(path)
+    return read_notebook_text()
 
 
 @mcp.tool
 def save_notebook(path: str | None = None) -> dict[str, object]:
     """Validate and save the active notebook to current or new path."""
     return save_notebook_impl(path)
-
-
-@mcp.tool
-def read_notebook() -> str:
-    """Return all active cells as [index:N type:T] plain-text blocks."""
-    return read_notebook_text()
 
 
 @mcp.tool

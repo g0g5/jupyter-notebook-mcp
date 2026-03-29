@@ -12,12 +12,7 @@ def test_end_to_end_flow_and_reload_behavior(tmp_path: Path) -> None:
     notebook_path = tmp_path / "flow.ipynb"
     write_notebook(notebook_path)
 
-    loaded = cast(dict[str, Any], main.load_notebook(str(notebook_path)))
-    assert set(loaded) == {"path", "total_cells", "active_cells"}
-    assert loaded["total_cells"] == 3
-    assert loaded["active_cells"] == 3
-
-    notebook_text = cast(str, main.read_notebook())
+    notebook_text = cast(str, main.load_notebook(str(notebook_path)))
     assert "[index:0 type:markdown]" in notebook_text
     assert "one two three four five six seven eight nine ten eleven" in notebook_text
     assert "[index:1 type:code]" in notebook_text
@@ -70,5 +65,5 @@ def test_end_to_end_flow_and_reload_behavior(tmp_path: Path) -> None:
     assert save_result["path"] == str(saved_copy_path)
     assert save_result["active_cells"] == 3
 
-    reloaded = cast(dict[str, Any], main.load_notebook(str(saved_copy_path)))
-    assert reloaded["total_cells"] == 3
+    reloaded = cast(str, main.load_notebook(str(saved_copy_path)))
+    assert "[index:2 type:raw]" in reloaded

@@ -98,8 +98,8 @@ def test_load_notebook_autosaves_dirty_changes_before_switching(tmp_path: Path) 
     main.replace_cell(1, "print('autosaved update')")
     main.remove_cell(2)
 
-    loaded = cast(dict[str, Any], main.load_notebook(str(second_path)))
-    assert loaded["path"] == str(second_path)
+    loaded = cast(str, main.load_notebook(str(second_path)))
+    assert "[index:0 type:markdown]" in loaded
     assert main.session.path == str(second_path)
     assert main.session.dirty is False
 
